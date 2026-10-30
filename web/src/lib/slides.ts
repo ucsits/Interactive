@@ -35,7 +35,8 @@ export const SLIDE_META: Record<SlideType, SlideMeta> = {
 
 export const SLIDE_ORDER: SlideType[] = ["poll", "quiz", "wordcloud", "open", "scale", "qa"]
 
-export const OPTION_COLORS = ["tangerine", "blurple", "sun", "lime", "pink", "sky", "mint", "tomato"]
+// Only the four UCS palette colors, so options five and up repeat them with a different shape.
+export const OPTION_COLORS = ["tangerine", "blurple", "sun", "lime"]
 export const OPTION_SHAPES: LucideIcon[] = [Triangle, Diamond, Circle, Square, Star, Hexagon, Heart, Pentagon]
 
 function tempId() {

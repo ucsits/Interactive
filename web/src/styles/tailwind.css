@@ -7,13 +7,13 @@
   --ink: #0b0b10;
   --paper: #ffffff;
   --white: #ffffff;
-  --sun: #6acad6;
-  --blurple: #5ca6a8;
-  --lime: #b1c887;
-  --tangerine: #f4926f;
-  --sky: #b4e4eb;
-  --mint: #d8e3c3;
-  --pink: #f9c8b7;
+  --sun: #2ab3c5;
+  --blurple: #168082;
+  --lime: #90b053;
+  --tangerine: #ef6331;
+  --sky: #2ab3c5;
+  --mint: #90b053;
+  --pink: #ef6331;
   --tomato: #ef6331;
   --radius: 0.875rem;
 
@@ -27,7 +27,7 @@
   --primary-foreground: var(--white);
   --secondary: var(--white);
   --secondary-foreground: var(--ink);
-  --muted: #eef4f4;
+  --muted: #f2f2f2;
   --muted-foreground: #45434f;
   --accent: var(--sun);
   --accent-foreground: var(--ink);
