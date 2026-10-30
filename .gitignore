@@ -147,3 +147,42 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# ---- Go ----
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/server/pulse
+/server/bin/
+/bin/
+# Test binaries and coverage output
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+# Workspace files
+go.work
+go.work.sum
+
+# ---- Pulse ----
+# Frontend build output is embedded into the Go binary, only keep the placeholder
+/server/dist/*
+!/server/dist/.gitkeep
+dist/
+dist-ssr/
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+/data/
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.sw?

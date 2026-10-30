@@ -1,0 +1,26 @@
+$border: 4px;
+$radius: 18px;
+
+@mixin brut($shadow: 6px, $radius: $radius) {
+  border: $border solid var(--ink);
+  border-radius: $radius;
+  box-shadow: $shadow $shadow 0 var(--ink);
+}
+
+@mixin lift($from: 6px, $to: 9px) {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  &:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: $to $to 0 var(--ink);
+  }
+  &:active {
+    transform: translate(#{$from}, #{$from});
+    box-shadow: 0 0 0 var(--ink);
+  }
+}
+
+@mixin phone {
+  @media (max-width: 720px) {
+    @content;
+  }
+}

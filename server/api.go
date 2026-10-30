@@ -1,0 +1,303 @@
+package main
+
+import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strings"
+
+	"github.com/labstack/echo/v4"
+)
+
+type API struct {
+	db  *sql.DB
+	hub *Hub
+}
+
+func (a *API) register(g *echo.Group) {
+	g.GET("/decks", a.listDecks)
+	g.POST("/decks", a.createDeck)
+	g.GET("/decks/:id", a.getDeck)
+	g.PUT("/decks/:id", a.saveDeck)
+	g.DELETE("/decks/:id", a.deleteDeck)
+	g.POST("/decks/:id/sessions", a.startSession)
+	g.GET("/sessions/:code", a.sessionInfo)
+	g.POST("/sessions/:code/join", a.joinSession)
+	g.GET("/ws/:code", a.hub.serveWS)
+}
+
+func teacherKey(c echo.Context) (string, error) {
+	key := strings.TrimSpace(c.Request().Header.Get("X-Teacher-Key"))
+	if len(key) < 16 {
+		return "", echo.NewHTTPError(http.StatusUnauthorized, "Missing teacher key")
+	}
+	return key, nil
+}
+
+func (a *API) ownedDeck(c echo.Context) (string, error) {
+	key, err := teacherKey(c)
+	if err != nil {
+		return "", err
+	}
+	id := c.Param("id")
+	var owner string
+	err = a.db.QueryRow(`SELECT owner_key FROM decks WHERE id = ?`, id).Scan(&owner)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && owner != key) {
+		return "", echo.NewHTTPError(http.StatusNotFound, "Deck not found")
+	}
+	return id, err
+}
+
+func (a *API) listDecks(c echo.Context) error {
+	key, err := teacherKey(c)
+	if err != nil {
+		return err
+	}
+	rows, err := a.db.Query(`
+		SELECT d.id, d.title, d.updated_at,
+			(SELECT COUNT(*) FROM slides s WHERE s.deck_id = d.id),
+			COALESCE((SELECT code FROM sessions x WHERE x.deck_id = d.id AND x.status = 'live' ORDER BY created_at DESC LIMIT 1), '')
+		FROM decks d WHERE d.owner_key = ? ORDER BY d.updated_at DESC`, key)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	decks := []Deck{}
+	for rows.Next() {
+		var d Deck
+		if err := rows.Scan(&d.ID, &d.Title, &d.UpdatedAt, &d.SlideCount, &d.LiveCode); err != nil {
+			return err
+		}
+		decks = append(decks, d)
+	}
+	return c.JSON(http.StatusOK, decks)
+}
+
+func (a *API) createDeck(c echo.Context) error {
+	key, err := teacherKey(c)
+	if err != nil {
+		return err
+	}
+	var body struct {
+		Title string `json:"title"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return err
+	}
+	title := truncate(strings.TrimSpace(body.Title), 120)
+	if title == "" {
+		title = "Untitled session"
+	}
+	id, now := newID(), nowMs()
+	starter := Slide{ID: newID(), Type: SlidePoll, Question: "How are you feeling today?",
+		Options: []string{"Great", "Okay", "Sleepy", "Ready to learn"}}
+	starter.normalize()
+	data, _ := json.Marshal(starter)
+
+	tx, err := a.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`INSERT INTO decks (id, owner_key, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		id, key, title, now, now); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`INSERT INTO slides (id, deck_id, position, data) VALUES (?, ?, 0, ?)`,
+		starter.ID, id, string(data)); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusCreated, Deck{ID: id, Title: title, Slides: []Slide{starter}, SlideCount: 1, UpdatedAt: now})
+}
+
+func (a *API) loadSlides(deckID string) ([]Slide, error) {
+	rows, err := a.db.Query(`SELECT data FROM slides WHERE deck_id = ? ORDER BY position`, deckID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	slides := []Slide{}
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return nil, err
+		}
+		var s Slide
+		if err := json.Unmarshal([]byte(raw), &s); err != nil {
+			return nil, err
+		}
+		slides = append(slides, s)
+	}
+	return slides, nil
+}
+
+func (a *API) getDeck(c echo.Context) error {
+	id, err := a.ownedDeck(c)
+	if err != nil {
+		return err
+	}
+	var d Deck
+	if err := a.db.QueryRow(`SELECT id, title, updated_at FROM decks WHERE id = ?`, id).
+		Scan(&d.ID, &d.Title, &d.UpdatedAt); err != nil {
+		return err
+	}
+	if d.Slides, err = a.loadSlides(id); err != nil {
+		return err
+	}
+	d.SlideCount = len(d.Slides)
+	return c.JSON(http.StatusOK, d)
+}
+
+func (a *API) saveDeck(c echo.Context) error {
+	id, err := a.ownedDeck(c)
+	if err != nil {
+		return err
+	}
+	var body Deck
+	if err := c.Bind(&body); err != nil {
+		return err
+	}
+	title := truncate(strings.TrimSpace(body.Title), 120)
+	if title == "" {
+		title = "Untitled session"
+	}
+	if len(body.Slides) > 100 {
+		return echo.NewHTTPError(http.StatusBadRequest, "A deck can hold up to 100 slides")
+	}
+	now := nowMs()
+	tx, err := a.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE decks SET title = ?, updated_at = ? WHERE id = ?`, title, now, id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM slides WHERE deck_id = ?`, id); err != nil {
+		return err
+	}
+	for i := range body.Slides {
+		s := &body.Slides[i]
+		if len(s.ID) < 8 {
+			s.ID = newID()
+		}
+		s.normalize()
+		data, _ := json.Marshal(s)
+		if _, err := tx.Exec(`INSERT INTO slides (id, deck_id, position, data) VALUES (?, ?, ?, ?)`,
+			s.ID, id, i, string(data)); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, Deck{ID: id, Title: title, Slides: body.Slides, SlideCount: len(body.Slides), UpdatedAt: now})
+}
+
+func (a *API) deleteDeck(c echo.Context) error {
+	id, err := a.ownedDeck(c)
+	if err != nil {
+		return err
+	}
+	if _, err := a.db.Exec(`DELETE FROM decks WHERE id = ?`, id); err != nil {
+		return err
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (a *API) startSession(c echo.Context) error {
+	id, err := a.ownedDeck(c)
+	if err != nil {
+		return err
+	}
+	var title string
+	if err := a.db.QueryRow(`SELECT title FROM decks WHERE id = ?`, id).Scan(&title); err != nil {
+		return err
+	}
+	slides, err := a.loadSlides(id)
+	if err != nil {
+		return err
+	}
+	if len(slides) == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Add at least one slide before going live")
+	}
+	// One live session per deck keeps the teacher dashboard simple.
+	var old []string
+	rows, err := a.db.Query(`SELECT code FROM sessions WHERE deck_id = ? AND status = 'live'`, id)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var code string
+		_ = rows.Scan(&code)
+		old = append(old, code)
+	}
+	rows.Close()
+	for _, code := range old {
+		a.hub.endSession(code)
+	}
+
+	var code string
+	for range 20 {
+		code = newJoinCode()
+		var n int
+		_ = a.db.QueryRow(`SELECT COUNT(*) FROM sessions WHERE code = ? AND status = 'live'`, code).Scan(&n)
+		if n == 0 {
+			break
+		}
+	}
+	data, _ := json.Marshal(slides)
+	if _, err := a.db.Exec(`INSERT INTO sessions (id, deck_id, code, title, slides, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		newID(), id, code, title, string(data), nowMs()); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusCreated, map[string]string{"code": code})
+}
+
+func (a *API) sessionInfo(c echo.Context) error {
+	var title string
+	err := a.db.QueryRow(`SELECT title FROM sessions WHERE code = ? AND status = 'live'`, c.Param("code")).Scan(&title)
+	if errors.Is(err, sql.ErrNoRows) {
+		return echo.NewHTTPError(http.StatusNotFound, "No live session with that code")
+	}
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, map[string]string{"code": c.Param("code"), "title": title})
+}
+
+func (a *API) joinSession(c echo.Context) error {
+	var body struct {
+		Nickname string `json:"nickname"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return err
+	}
+	nick := truncate(strings.Join(strings.Fields(body.Nickname), " "), 24)
+	if nick == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Pick a nickname first")
+	}
+	var sessionID string
+	err := a.db.QueryRow(`SELECT id FROM sessions WHERE code = ? AND status = 'live'`, c.Param("code")).Scan(&sessionID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return echo.NewHTTPError(http.StatusNotFound, "No live session with that code")
+	}
+	if err != nil {
+		return err
+	}
+	id, token := newID(), newToken()
+	_, err = a.db.Exec(`INSERT INTO participants (id, session_id, nickname, token, created_at) VALUES (?, ?, ?, ?, ?)`,
+		id, sessionID, nick, token, nowMs())
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") {
+			return echo.NewHTTPError(http.StatusConflict, "That nickname is taken, try another one")
+		}
+		return err
+	}
+	a.hub.touch(c.Param("code"))
+	return c.JSON(http.StatusCreated, map[string]string{"participantId": id, "token": token, "nickname": nick})
+}
