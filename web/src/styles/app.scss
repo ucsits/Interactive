@@ -20,8 +20,7 @@ $colors: (
     background-color: $value;
   }
 }
-.bg-ink,
-.bg-blurple {
+.bg-ink {
   color: var(--white);
 }
 
@@ -153,7 +152,6 @@ body {
     margin-left: 4px;
     padding: 0 8px 2px;
     background: var(--blurple);
-    color: var(--white);
     border: 3px solid var(--ink);
     border-radius: 10px;
     box-shadow: 3px 3px 0 var(--ink);
@@ -439,7 +437,6 @@ body {
   gap: 16px;
   padding: 32px;
   background: var(--blurple);
-  color: var(--white);
   @include brut(10px, 26px);
   transform: rotate(1.5deg);
   @include phone {

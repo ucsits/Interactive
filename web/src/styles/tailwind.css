@@ -7,14 +7,14 @@
   --ink: #0b0b10;
   --paper: #ffffff;
   --white: #ffffff;
-  --sun: #2ab3c5;
-  --blurple: #168082;
-  --lime: #90b053;
-  --tangerine: #ef6331;
-  --sky: #2ab3c5;
-  --mint: #90b053;
-  --pink: #ef6331;
-  --tomato: #ef6331;
+  --sun: #e7c641;
+  --blurple: #3f85cc;
+  --lime: #27ad88;
+  --tangerine: #e85858;
+  --sky: #3f85cc;
+  --mint: #27ad88;
+  --pink: #e85858;
+  --tomato: #e85858;
   --radius: 0.875rem;
 
   --background: var(--paper);
