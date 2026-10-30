@@ -23,6 +23,15 @@ export interface Deck {
   updatedAt: number
 }
 
+export interface SessionSummary {
+  id: string
+  code: string
+  status: "live" | "ended"
+  createdAt: number
+  participantCount: number
+  responseCount: number
+}
+
 export interface Entry {
   id: string
   text: string
@@ -58,6 +67,8 @@ export interface RoomState {
   type: "state"
   role: "host" | "player"
   code: string
+  sessionId?: string
+  deckId?: string
   title: string
   status: "live" | "ended"
   index: number

@@ -50,6 +50,8 @@ The response is the saved deck with an `id`. Then send the teacher the review li
 - `POST /decks/{id}/slides` with `{"slides": [...]}` adds slides to the end.
 - `PUT /decks/{id}` with `{"title", "slides"}` replaces every slide. Get the deck first and send back the full list, or slides will be lost.
 - `DELETE /decks/{id}` deletes a deck for good. Ask the teacher first.
+- `GET /decks/{id}/sessions` lists past and live sessions of a deck.
+- `GET /decks/{id}/sessions/{sessionId}/export?format=json` returns every student with display name, NRP and answers. Leave out format to get a CSV for spreadsheets.
 - `POST /decks/{id}/sessions` goes live and returns `{"code"}`. The teacher presents at __BASE_URL__/host/{code} and students join at __BASE_URL__ with that code.
 
 ## Errors

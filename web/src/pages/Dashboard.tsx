@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Bot, Layers, Loader2, Pencil, Play, Plus, Radio, Trash2 } from "lucide-react"
+import { BarChart3, Bot, Layers, Loader2, Pencil, Play, Plus, Radio, Trash2 } from "lucide-react"
 import { AgentDialog } from "@/components/AgentDialog"
+import { ResultsDialog } from "@/components/ResultsDialog"
 import { Logo } from "@/components/Logo"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +26,7 @@ export default function Dashboard() {
   const [busy, setBusy] = useState<string | null>(null)
   const [doomed, setDoomed] = useState<Deck | null>(null)
   const [agentOpen, setAgentOpen] = useState(false)
+  const [resultsDeck, setResultsDeck] = useState<Deck | null>(null)
 
   // Refetch on focus so decks an AI agent made elsewhere appear without a reload.
   useEffect(() => {
@@ -116,6 +118,9 @@ export default function Dashboard() {
                   <Button variant="outline" size="icon" onClick={() => navigate(`/teach/${deck.id}`)} aria-label="Edit">
                     <Pencil />
                   </Button>
+                  <Button variant="outline" size="icon" onClick={() => setResultsDeck(deck)} aria-label="Results and export">
+                    <BarChart3 />
+                  </Button>
                   <Button variant="outline" size="icon" onClick={() => setDoomed(deck)} aria-label="Delete">
                     <Trash2 />
                   </Button>
@@ -139,6 +144,7 @@ export default function Dashboard() {
       </main>
 
       <AgentDialog open={agentOpen} onOpenChange={setAgentOpen} />
+      <ResultsDialog deck={resultsDeck} onClose={() => setResultsDeck(null)} />
 
       <Dialog open={!!doomed} onOpenChange={(open) => !open && setDoomed(null)}>
         <DialogContent>

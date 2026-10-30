@@ -60,6 +60,12 @@ server/   Go API, websocket hub, SQLite schema, embedded dist/
 web/      Vite React app (pages/, components/, lib/, styles/)
 ```
 
+## Students and results
+
+Students join with a display name, which is the only thing shown on the big screen, and their NRP (student ID). Each NRP can join a session once.
+
+Teachers download results from the chart button on a deck card, or from the final screen after ending a session. The CSV has one row per student with display name, NRP, quiz score and every answer.
+
 ## API for AI agents
 
 Teachers can let their own AI build decks. The Sessions page has a "Use your AI" button with a ready prompt and the teacher key.

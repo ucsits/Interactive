@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Crown,
+  Download,
   Eye,
   EyeOff,
   Hourglass,
@@ -26,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { formatCode, teacherKey } from "@/lib/api"
+import { downloadResults, formatCode, teacherKey } from "@/lib/api"
 import { OPTION_COLORS, SLIDE_META } from "@/lib/slides"
 import type { RoomState } from "@/lib/types"
 import { useCountdown, useRoom } from "@/lib/useRoom"
@@ -124,9 +125,16 @@ export default function Host() {
         {state.status === "ended" ? (
           <div className="host__center">
             <Leaderboard players={state.leaderboard} title={state.hasQuiz ? "Final standings" : "Thanks everyone"} />
-            <Button size="lg" variant="sun" onClick={() => navigate("/teach")}>
-              Back to sessions
-            </Button>
+            <div className="host__end-actions">
+              {state.deckId && state.sessionId && (
+                <Button size="lg" variant="lime" onClick={() => downloadResults(state.deckId!, state.sessionId!)}>
+                  <Download /> Download results
+                </Button>
+              )}
+              <Button size="lg" variant="sun" onClick={() => navigate("/teach")}>
+                Back to sessions
+              </Button>
+            </div>
           </div>
         ) : state.showLeaderboard ? (
           <div className="host__center">

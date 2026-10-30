@@ -38,6 +38,7 @@ type Room struct {
 	hub             *Hub
 	id              string
 	code            string
+	deckID          string
 	ownerKey        string
 	title           string
 	slides          []Slide
@@ -69,10 +70,10 @@ func (h *Hub) room(code string) (*Room, error) {
 	var slidesRaw string
 	var reveal, lb int
 	err := h.db.QueryRow(`
-		SELECT s.id, d.owner_key, s.title, s.slides, s.current_index, s.reveal, s.show_leaderboard, s.status, s.slide_started_at
+		SELECT s.id, d.id, d.owner_key, s.title, s.slides, s.current_index, s.reveal, s.show_leaderboard, s.status, s.slide_started_at
 		FROM sessions s JOIN decks d ON d.id = s.deck_id
 		WHERE s.code = ? AND s.status = 'live' ORDER BY s.created_at DESC LIMIT 1`, code).
-		Scan(&r.id, &r.ownerKey, &r.title, &slidesRaw, &r.index, &reveal, &lb, &r.status, &r.startedAt)
+		Scan(&r.id, &r.deckID, &r.ownerKey, &r.title, &slidesRaw, &r.index, &reveal, &lb, &r.status, &r.startedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -443,6 +444,8 @@ type State struct {
 	Type             string   `json:"type"`
 	Role             string   `json:"role"`
 	Code             string   `json:"code"`
+	SessionID        string   `json:"sessionId,omitempty"`
+	DeckID           string   `json:"deckId,omitempty"`
 	Title            string   `json:"title"`
 	Status           string   `json:"status"`
 	Index            int      `json:"index"`
@@ -585,6 +588,7 @@ func (r *Room) broadcast() {
 		s := base
 		if c.host {
 			s.Role = "host"
+			s.SessionID, s.DeckID = r.id, r.deckID
 			s.Slide = slide
 			s.Slides = r.slides
 			s.Participants = players

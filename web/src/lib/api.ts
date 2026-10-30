@@ -1,4 +1,4 @@
-import type { Deck, Slide } from "./types"
+import type { Deck, SessionSummary, Slide } from "./types"
 
 const TEACHER_KEY = "pulse.teacherKey"
 
@@ -37,6 +37,7 @@ export interface PlayerSession {
   participantId: string
   token: string
   nickname: string
+  studentId?: string
 }
 
 export function savedPlayer(code: string): PlayerSession | null {
@@ -92,9 +93,27 @@ export const api = {
     request<Deck>("PUT", `/decks/${id}?draft=1`, { title, slides }),
   deleteDeck: (id: string) => request<void>("DELETE", `/decks/${id}`),
   startSession: (id: string) => request<{ code: string }>("POST", `/decks/${id}/sessions`),
+  listSessions: (deckId: string) => request<SessionSummary[]>("GET", `/decks/${deckId}/sessions`),
   sessionInfo: (code: string) => request<{ code: string; title: string }>("GET", `/sessions/${code}`),
-  join: (code: string, nickname: string) =>
-    request<PlayerSession>("POST", `/sessions/${code}/join`, { nickname }),
+  join: (code: string, nickname: string, studentId: string) =>
+    request<PlayerSession>("POST", `/sessions/${code}/join`, { nickname, studentId }),
+}
+
+// downloadResults saves a session's results as a CSV file. It uses fetch
+// instead of a plain link so the teacher key stays in a header.
+export async function downloadResults(deckId: string, sessionId: string) {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const res = await fetch(`/api/decks/${deckId}/sessions/${sessionId}/export?tz=${encodeURIComponent(tz)}`, {
+    headers: { "X-Teacher-Key": teacherKey() },
+  })
+  if (!res.ok) throw new ApiError(res.status, "Could not export these results")
+  const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "results.csv"
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement("a")
+  a.href = url
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export function formatCode(code: string) {

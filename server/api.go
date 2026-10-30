@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 )
+
+var studentIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
 type API struct {
 	db  *sql.DB
@@ -23,6 +26,8 @@ func (a *API) register(g *echo.Group) {
 	g.DELETE("/decks/:id", a.deleteDeck)
 	g.POST("/decks/:id/slides", a.appendSlides)
 	g.POST("/decks/:id/sessions", a.startSession)
+	g.GET("/decks/:id/sessions", a.listSessions)
+	g.GET("/decks/:id/sessions/:sid/export", a.exportSession)
 	g.GET("/sessions/:code", a.sessionInfo)
 	g.POST("/sessions/:code/join", a.joinSession)
 	g.GET("/ws/:code", a.hub.serveWS)
@@ -352,14 +357,22 @@ func (a *API) sessionInfo(c echo.Context) error {
 
 func (a *API) joinSession(c echo.Context) error {
 	var body struct {
-		Nickname string `json:"nickname"`
+		Nickname  string `json:"nickname"`
+		StudentID string `json:"studentId"`
 	}
 	if err := c.Bind(&body); err != nil {
 		return err
 	}
 	nick := truncate(strings.Join(strings.Fields(body.Nickname), " "), 24)
 	if nick == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Pick a nickname first")
+		return echo.NewHTTPError(http.StatusBadRequest, "Pick a display name first")
+	}
+	studentID := strings.Join(strings.Fields(body.StudentID), "")
+	if studentID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Enter your NRP")
+	}
+	if len(studentID) > 20 || !studentIDPattern.MatchString(studentID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "NRP can only use letters and numbers, up to 20 characters")
 	}
 	var sessionID string
 	err := a.db.QueryRow(`SELECT id FROM sessions WHERE code = ? AND status = 'live'`, c.Param("code")).Scan(&sessionID)
@@ -370,14 +383,17 @@ func (a *API) joinSession(c echo.Context) error {
 		return err
 	}
 	id, token := newID(), newToken()
-	_, err = a.db.Exec(`INSERT INTO participants (id, session_id, nickname, token, created_at) VALUES (?, ?, ?, ?, ?)`,
-		id, sessionID, nick, token, nowMs())
+	_, err = a.db.Exec(`INSERT INTO participants (id, session_id, nickname, student_id, token, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		id, sessionID, nick, studentID, token, nowMs())
 	if err != nil {
+		if strings.Contains(err.Error(), "student_id") {
+			return echo.NewHTTPError(http.StatusConflict, "That NRP already joined this session, ask your teacher if this is a mistake")
+		}
 		if strings.Contains(err.Error(), "UNIQUE") {
-			return echo.NewHTTPError(http.StatusConflict, "That nickname is taken, try another one")
+			return echo.NewHTTPError(http.StatusConflict, "That display name is taken, try another one")
 		}
 		return err
 	}
 	a.hub.touch(c.Param("code"))
-	return c.JSON(http.StatusCreated, map[string]string{"participantId": id, "token": token, "nickname": nick})
+	return c.JSON(http.StatusCreated, map[string]string{"participantId": id, "token": token, "nickname": nick, "studentId": studentID})
 }

@@ -83,7 +83,27 @@ func openDB(path string) (*sql.DB, error) {
 	if _, err := db.Exec(schema); err != nil {
 		return nil, err
 	}
+	if err := migrate(db); err != nil {
+		return nil, err
+	}
 	return db, nil
+}
+
+// migrate upgrades databases created by older versions in place.
+func migrate(db *sql.DB) error {
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('participants') WHERE name = 'student_id'`).Scan(&n); err != nil {
+		return err
+	}
+	if n == 0 {
+		if _, err := db.Exec(`ALTER TABLE participants ADD COLUMN student_id TEXT NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
+	// Students who joined before NRPs existed have an empty one, so leave them out of the uniqueness check.
+	_, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_participants_student
+		ON participants(session_id, student_id COLLATE NOCASE) WHERE student_id != ''`)
+	return err
 }
 
 func newID() string {
