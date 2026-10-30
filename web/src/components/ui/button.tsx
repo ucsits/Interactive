@@ -15,7 +15,7 @@ const buttonVariants = cva(
         lime: "bg-lime text-ink",
         sky: "bg-sky text-ink",
         blurple: "bg-blurple text-ink",
-        destructive: "bg-tomato text-white",
+        destructive: "bg-tomato text-ink",
         outline: "bg-white text-ink",
         ghost: "border-transparent bg-transparent text-ink shadow-none hover:border-ink hover:bg-white hover:shadow-[4px_4px_0_var(--ink)]",
         link: "border-transparent bg-transparent text-ink underline decoration-4 underline-offset-4 shadow-none hover:shadow-none",

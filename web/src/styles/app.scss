@@ -251,7 +251,7 @@ body {
   padding: 10px 14px;
   font-weight: 800;
   background: var(--tomato);
-  color: var(--white);
+  color: var(--ink);
   border: 3px solid var(--ink);
   border-radius: 12px;
 }
@@ -931,7 +931,7 @@ body {
   }
   &--hot {
     background: var(--tomato);
-    color: var(--white);
+    color: var(--ink);
     animation: pulse 0.5s ease-in-out infinite alternate;
   }
 }

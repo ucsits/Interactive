@@ -63,7 +63,7 @@ export default function Play() {
             <Star strokeWidth={3} /> {(me?.score ?? 0).toLocaleString()}
           </span>
         )}
-        {!connected && <span className="chip bg-tomato text-white">Reconnecting</span>}
+        {!connected && <span className="chip bg-tomato">Reconnecting</span>}
       </header>
 
       <main className="play__main">
@@ -129,7 +129,7 @@ function SlidePanel({ state, send, countdown }: { state: RoomState; send: SendFn
           <Icon strokeWidth={3} /> {meta.label}
         </span>
         {countdown !== null && (
-          <span className={cn("chip", countdown <= 5 ? "bg-tomato text-white" : "bg-white")}>
+          <span className={cn("chip", countdown <= 5 ? "bg-tomato" : "bg-white")}>
             <Hourglass strokeWidth={3} /> {countdown}s
           </span>
         )}
@@ -172,7 +172,7 @@ function SlideInput({ state, send, timeUp }: { state: RoomState; send: SendFn; t
         }
         const right = slide.correct.includes(chosen)
         return (
-          <div className={cn("verdict pop-in", right ? "bg-lime" : "bg-tomato text-white")}>
+          <div className={cn("verdict pop-in", right ? "bg-lime" : "bg-tomato")}>
             {right ? <CircleCheckBig strokeWidth={3} /> : <CircleX strokeWidth={3} />}
             <div>
               <h2>{right ? "Correct!" : "Not this time"}</h2>

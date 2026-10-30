@@ -89,7 +89,7 @@ export default function Dashboard() {
             {decks.map((deck, i) => (
               <article key={deck.id} className={`deck-card ${CARD_COLORS[i % CARD_COLORS.length]}`}>
                 {deck.liveCode && (
-                  <span className="sticker bg-tomato text-white deck-card__live">
+                  <span className="sticker bg-tomato deck-card__live">
                     <Radio strokeWidth={3} /> Live {formatCode(deck.liveCode)}
                   </span>
                 )}

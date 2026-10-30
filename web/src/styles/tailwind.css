@@ -7,14 +7,14 @@
   --ink: #0b0b10;
   --paper: #f7f7f6;
   --white: #ffffff;
-  --sun: #f8e316;
-  --tangerine: #f37b25;
-  --lime: #61ba4c;
-  --blurple: #7783b5;
-  --pink: #f9b27f;
-  --sky: #b4bbdb;
-  --mint: #a8d99b;
-  --tomato: #d4470a;
+  --sun: #fcf08c;
+  --tangerine: #f9b483;
+  --lime: #a8dc98;
+  --blurple: #b3bae0;
+  --pink: #fddcc4;
+  --sky: #dcdff2;
+  --mint: #d5eecd;
+  --tomato: #f28b82;
   --radius: 0.875rem;
 
   --background: var(--paper);

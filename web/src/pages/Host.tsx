@@ -108,7 +108,7 @@ export default function Host() {
           <span className="chip bg-white">
             <Users strokeWidth={3} /> {state.participantCount}
           </span>
-          {!connected && <span className="chip bg-tomato text-white">Reconnecting</span>}
+          {!connected && <span className="chip bg-tomato">Reconnecting</span>}
           <Button
             variant="outline"
             size="icon"
