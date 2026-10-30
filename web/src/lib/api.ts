@@ -89,7 +89,7 @@ export const api = {
   createDeck: (title: string) => request<Deck>("POST", "/decks", { title }),
   getDeck: (id: string) => request<Deck>("GET", `/decks/${id}`),
   saveDeck: (id: string, title: string, slides: Slide[]) =>
-    request<Deck>("PUT", `/decks/${id}`, { title, slides }),
+    request<Deck>("PUT", `/decks/${id}?draft=1`, { title, slides }),
   deleteDeck: (id: string) => request<void>("DELETE", `/decks/${id}`),
   startSession: (id: string) => request<{ code: string }>("POST", `/decks/${id}/sessions`),
   sessionInfo: (code: string) => request<{ code: string; title: string }>("GET", `/sessions/${code}`),

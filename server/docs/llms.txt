@@ -1,0 +1,65 @@
+# UCS Interactive
+
+> UCS Interactive runs live classroom sessions. Students join on their phones with a 6 digit code and answer polls, quizzes, word clouds, open questions, rating scales and live Q&A. This guide is for AI agents that build sessions for a teacher.
+
+Base URL __BASE_URL__/api
+OpenAPI spec __BASE_URL__/api/openapi.json
+Interactive docs __BASE_URL__/api/docs
+
+## Auth
+
+The teacher copies their key from the Sessions page (button "Use your AI").
+Send it on every request as the header `X-Teacher-Key`, or as `Authorization: Bearer <key>`.
+Decks made with the key appear in the teacher's browser right away. Never show the key to students or put it in a URL.
+
+## Build a session in one call
+
+```
+curl -X POST __BASE_URL__/api/decks \
+  -H "X-Teacher-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{
+    "title": "Photosynthesis warm up",
+    "slides": [
+      {"type": "wordcloud", "question": "One word for plants", "maxEntries": 2},
+      {"type": "quiz", "question": "Which gas do plants take in?", "options": ["Oxygen", "Carbon dioxide", "Nitrogen", "Helium"], "correct": [1], "timeLimit": 20},
+      {"type": "poll", "question": "Where does photosynthesis mostly happen?", "options": ["Roots", "Stem", "Leaves", "Flowers"]},
+      {"type": "scale", "question": "How confident are you?", "scaleMin": 1, "scaleMax": 5, "minLabel": "Lost", "maxLabel": "Could teach it"},
+      {"type": "open", "question": "Explain photosynthesis to a 7 year old"},
+      {"type": "qa", "question": "What questions do you still have?"}
+    ]
+  }'
+```
+
+The response is the saved deck with an `id`. Then send the teacher the review link __BASE_URL__/teach/{id}
+
+## Slide types
+
+| type | needs | shows |
+| --- | --- | --- |
+| poll | question, options (2 to 8) | live bar chart, no right answer |
+| quiz | question, options (2 to 8), correct (zero based indexes), optional timeLimit in seconds | answer reveal and a speed based leaderboard |
+| wordcloud | question, optional maxEntries (1 to 10, default 3) | word cloud, repeats grow bigger |
+| open | question, optional maxEntries | free text cards |
+| scale | question, scaleMin, scaleMax (range up to 10), optional minLabel and maxLabel | average and spread |
+| qa | question as the prompt | student questions sorted by upvotes |
+
+## Other calls
+
+- `GET /decks` lists decks.
+- `GET /decks/{id}` returns a deck with its slides.
+- `POST /decks/{id}/slides` with `{"slides": [...]}` adds slides to the end.
+- `PUT /decks/{id}` with `{"title", "slides"}` replaces every slide. Get the deck first and send back the full list, or slides will be lost.
+- `DELETE /decks/{id}` deletes a deck for good. Ask the teacher first.
+- `POST /decks/{id}/sessions` goes live and returns `{"code"}`. The teacher presents at __BASE_URL__/host/{code} and students join at __BASE_URL__ with that code.
+
+## Errors
+
+Errors return JSON like `{"message": "Slide 2 is a quiz and needs at least one correct option index"}`. Fix the slide it names and send again.
+401 means the key is missing. 404 means the deck does not exist for this key.
+
+## Tips for good sessions
+
+- Keep questions under about 80 characters so they read well on a projector.
+- Four short options per poll or quiz work best on phones.
+- Mix types. Open with a word cloud or scale, put quizzes in the middle, end with qa.
+- A deck holds up to 100 slides. 5 to 12 fits a normal lesson.

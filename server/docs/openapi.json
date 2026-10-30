@@ -1,0 +1,237 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "UCS Interactive API",
+    "version": "1.0.0",
+    "description": "Build interactive classroom sessions (polls, quizzes, word clouds, open questions, rating scales and live Q&A) on behalf of a teacher.\n\nAuthentication uses the teacher key. The teacher finds it on the Sessions page under \"Use your AI\". Send it as the `X-Teacher-Key` header or as `Authorization: Bearer <key>`. Every deck you create with that key shows up in the teacher's browser right away.\n\nTypical agent flow\n1. `POST /decks` with a title and the full slides array.\n2. Read the response. On a 400 error, fix the slide named in `message` and retry.\n3. Give the teacher the edit link `/teach/{id}` so they can review it, or call `POST /decks/{id}/sessions` to go live.\n\nA plain text guide with examples lives at `/llms.txt`."
+  },
+  "servers": [{ "url": "__BASE_URL__/api" }],
+  "security": [{ "teacherKey": [] }, { "bearer": [] }],
+  "tags": [
+    { "name": "Decks", "description": "A deck is a list of slides a teacher can present live." },
+    { "name": "Sessions", "description": "A live run of a deck that students join with a 6 digit code." }
+  ],
+  "paths": {
+    "/decks": {
+      "get": {
+        "tags": ["Decks"],
+        "operationId": "listDecks",
+        "summary": "List the teacher's decks",
+        "description": "Newest first. Slides are left out, use getDeck for them.",
+        "responses": {
+          "200": {
+            "description": "The teacher's decks",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/DeckSummary" } } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Decks"],
+        "operationId": "createDeck",
+        "summary": "Create a deck, optionally with all its slides",
+        "description": "Send the whole deck in one call. Slides are validated strictly and the first problem comes back as a 400 with a message naming the slide. If slides is empty or missing, the deck starts with one sample poll.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DeckInput" },
+              "examples": {
+                "mixed": {
+                  "summary": "A short lesson opener",
+                  "value": {
+                    "title": "Photosynthesis warm up",
+                    "slides": [
+                      { "type": "wordcloud", "question": "One word that comes to mind when you hear plants", "maxEntries": 2 },
+                      { "type": "quiz", "question": "Which gas do plants take in?", "options": ["Oxygen", "Carbon dioxide", "Nitrogen", "Helium"], "correct": [1], "timeLimit": 20 },
+                      { "type": "poll", "question": "Where does photosynthesis mostly happen?", "options": ["Roots", "Stem", "Leaves", "Flowers"] },
+                      { "type": "scale", "question": "How confident do you feel about this topic?", "scaleMin": 1, "scaleMax": 5, "minLabel": "Lost", "maxLabel": "Could teach it" },
+                      { "type": "open", "question": "Explain photosynthesis to a 7 year old" },
+                      { "type": "qa", "question": "What questions do you still have?" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "The new deck with normalized slides", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Deck" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/decks/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/DeckId" }],
+      "get": {
+        "tags": ["Decks"],
+        "operationId": "getDeck",
+        "summary": "Get a deck with its slides",
+        "responses": {
+          "200": { "description": "The deck", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Deck" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Decks"],
+        "operationId": "replaceDeck",
+        "summary": "Replace the title and every slide",
+        "description": "This overwrites the whole slide list. Slides you leave out are deleted. To edit, call getDeck first, change the array, then send all of it back. Keep each slide id to keep its identity. To only add slides, use appendSlides instead.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DeckInput" } } }
+        },
+        "responses": {
+          "200": { "description": "The saved deck", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Deck" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Decks"],
+        "operationId": "deleteDeck",
+        "summary": "Delete a deck and all of its results",
+        "description": "This cannot be undone. Ask the teacher before calling it.",
+        "responses": {
+          "204": { "description": "Deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/decks/{id}/slides": {
+      "parameters": [{ "$ref": "#/components/parameters/DeckId" }],
+      "post": {
+        "tags": ["Decks"],
+        "operationId": "appendSlides",
+        "summary": "Add slides to the end of a deck",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["slides"],
+                "properties": { "slides": { "type": "array", "minItems": 1, "items": { "$ref": "#/components/schemas/SlideInput" } } }
+              },
+              "example": { "slides": [{ "type": "poll", "question": "Which topic should we review next?", "options": ["Fractions", "Decimals", "Percentages"] }] }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "The whole deck after the append", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Deck" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/decks/{id}/sessions": {
+      "parameters": [{ "$ref": "#/components/parameters/DeckId" }],
+      "post": {
+        "tags": ["Sessions"],
+        "operationId": "startSession",
+        "summary": "Go live with a deck",
+        "description": "Snapshots the slides and returns a 6 digit join code. Any earlier live session of the same deck ends. Students join at the site root with the code. The teacher presents from `/host/{code}` in the same browser that holds the key.",
+        "responses": {
+          "201": {
+            "description": "The live session",
+            "content": { "application/json": { "schema": { "type": "object", "required": ["code"], "properties": { "code": { "type": "string", "pattern": "^[0-9]{6}$", "example": "482913" } } } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/sessions/{code}": {
+      "get": {
+        "tags": ["Sessions"],
+        "operationId": "sessionInfo",
+        "summary": "Check that a join code is live",
+        "security": [],
+        "parameters": [{ "$ref": "#/components/parameters/Code" }],
+        "responses": {
+          "200": {
+            "description": "The session is live",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "code": { "type": "string" }, "title": { "type": "string" } } } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "teacherKey": { "type": "apiKey", "in": "header", "name": "X-Teacher-Key", "description": "The teacher key from the Sessions page, at least 16 characters." },
+      "bearer": { "type": "http", "scheme": "bearer", "description": "The same teacher key sent as a bearer token." }
+    },
+    "parameters": {
+      "DeckId": { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Deck id from createDeck or listDecks" },
+      "Code": { "name": "code", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^[0-9]{6}$" } }
+    },
+    "responses": {
+      "BadRequest": { "description": "Invalid input. The message says what to fix.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "message": "Slide 2 is a quiz and needs at least one correct option index" } } } },
+      "Unauthorized": { "description": "Missing or too short teacher key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "Not found, or it belongs to another teacher key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+    },
+    "schemas": {
+      "Error": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string" } } },
+      "SlideType": {
+        "type": "string",
+        "enum": ["poll", "quiz", "wordcloud", "open", "scale", "qa"],
+        "description": "poll is multiple choice with no right answer and shows a bar chart.\nquiz is multiple choice with correct answers, an optional timer, and points for speed (500 to 1000) that feed a leaderboard.\nwordcloud lets each student send up to maxEntries short words.\nopen collects free text answers shown as cards.\nscale asks for a number from scaleMin to scaleMax and shows the average.\nqa lets students ask questions and upvote each other, question is the prompt shown on screen."
+      },
+      "SlideInput": {
+        "type": "object",
+        "required": ["type", "question"],
+        "description": "Only send the fields that matter for the type. Others are ignored.",
+        "properties": {
+          "id": { "type": "string", "description": "Leave out for new slides. Keep the existing id when replacing a deck." },
+          "type": { "$ref": "#/components/schemas/SlideType" },
+          "question": { "type": "string", "maxLength": 300, "description": "The prompt shown big on the projector. Keep it short." },
+          "options": { "type": "array", "items": { "type": "string", "maxLength": 120 }, "minItems": 2, "maxItems": 8, "description": "Required for poll and quiz, 2 to 8 items. Four short options read best." },
+          "correct": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "Quiz only. Zero based indexes into options. At least one is required for a quiz. Several are allowed." },
+          "timeLimit": { "type": "integer", "minimum": 0, "maximum": 300, "default": 0, "description": "Quiz only. Seconds to answer, 0 means no timer. 20 is a good default." },
+          "scaleMin": { "type": "integer", "default": 1, "description": "Scale only. Lowest value." },
+          "scaleMax": { "type": "integer", "default": 5, "description": "Scale only. Highest value, at most 10 above scaleMin." },
+          "minLabel": { "type": "string", "maxLength": 40, "description": "Scale only. Label for the low end." },
+          "maxLabel": { "type": "string", "maxLength": 40, "description": "Scale only. Label for the high end." },
+          "maxEntries": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3, "description": "Wordcloud and open only. How many answers each student may send." }
+        }
+      },
+      "Slide": {
+        "allOf": [{ "$ref": "#/components/schemas/SlideInput" }],
+        "type": "object",
+        "required": ["id", "type", "question", "options", "correct", "timeLimit", "scaleMin", "scaleMax", "minLabel", "maxLabel", "maxEntries"]
+      },
+      "DeckInput": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "maxLength": 120, "description": "Defaults to Untitled session" },
+          "slides": { "type": "array", "maxItems": 100, "items": { "$ref": "#/components/schemas/SlideInput" } }
+        }
+      },
+      "DeckSummary": {
+        "type": "object",
+        "required": ["id", "title", "slideCount", "updatedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "slideCount": { "type": "integer" },
+          "liveCode": { "type": "string", "description": "Join code when the deck is live right now" },
+          "updatedAt": { "type": "integer", "description": "Unix time in milliseconds" }
+        }
+      },
+      "Deck": {
+        "allOf": [{ "$ref": "#/components/schemas/DeckSummary" }],
+        "type": "object",
+        "required": ["slides"],
+        "properties": { "slides": { "type": "array", "items": { "$ref": "#/components/schemas/Slide" } } }
+      }
+    }
+  }
+}

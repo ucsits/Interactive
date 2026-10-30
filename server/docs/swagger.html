@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UCS Interactive API</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css">
+  <style>
+    body { margin: 0; background: #fff; font-family: Inter, system-ui, sans-serif; }
+    .ucs-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+      padding: 16px 24px; background: #e7c641; border-bottom: 4px solid #0b0b10; }
+    .ucs-bar h1 { margin: 0; font-size: 22px; font-weight: 900; }
+    .ucs-bar a { color: #0b0b10; font-weight: 800; border: 3px solid #0b0b10; border-radius: 10px;
+      padding: 6px 12px; background: #fff; text-decoration: none; box-shadow: 3px 3px 0 #0b0b10; }
+    .ucs-bar nav { display: flex; gap: 10px; flex-wrap: wrap; }
+    .swagger-ui .topbar { display: none; }
+  </style>
+</head>
+<body>
+  <header class="ucs-bar">
+    <h1>UCS Interactive API</h1>
+    <nav>
+      <a href="/llms.txt">Guide for AI agents</a>
+      <a href="/api/openapi.json">OpenAPI JSON</a>
+      <a href="/teach">Back to sessions</a>
+    </nav>
+  </header>
+  <div id="swagger"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+  <script>
+    SwaggerUIBundle({ url: "/api/openapi.json", dom_id: "#swagger", deepLinking: true,
+      persistAuthorization: false, defaultModelsExpandDepth: 0 })
+  </script>
+</body>
+</html>

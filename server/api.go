@@ -21,14 +21,23 @@ func (a *API) register(g *echo.Group) {
 	g.GET("/decks/:id", a.getDeck)
 	g.PUT("/decks/:id", a.saveDeck)
 	g.DELETE("/decks/:id", a.deleteDeck)
+	g.POST("/decks/:id/slides", a.appendSlides)
 	g.POST("/decks/:id/sessions", a.startSession)
 	g.GET("/sessions/:code", a.sessionInfo)
 	g.POST("/sessions/:code/join", a.joinSession)
 	g.GET("/ws/:code", a.hub.serveWS)
 }
 
+// teacherKey reads the key from X-Teacher-Key, or from a bearer token since
+// many AI agent tools only know how to send that.
 func teacherKey(c echo.Context) (string, error) {
-	key := strings.TrimSpace(c.Request().Header.Get("X-Teacher-Key"))
+	h := c.Request().Header
+	key := strings.TrimSpace(h.Get("X-Teacher-Key"))
+	if key == "" {
+		if auth := h.Get("Authorization"); len(auth) > 7 && strings.EqualFold(auth[:7], "bearer ") {
+			key = strings.TrimSpace(auth[7:])
+		}
+	}
 	if len(key) < 16 {
 		return "", echo.NewHTTPError(http.StatusUnauthorized, "Missing teacher key")
 	}
@@ -80,7 +89,8 @@ func (a *API) createDeck(c echo.Context) error {
 		return err
 	}
 	var body struct {
-		Title string `json:"title"`
+		Title  string  `json:"title"`
+		Slides []Slide `json:"slides"`
 	}
 	if err := c.Bind(&body); err != nil {
 		return err
@@ -89,11 +99,14 @@ func (a *API) createDeck(c echo.Context) error {
 	if title == "" {
 		title = "Untitled session"
 	}
+	slides := body.Slides
+	if len(slides) == 0 {
+		slides = []Slide{{Type: SlidePoll, Question: "How are you feeling today?",
+			Options: []string{"Great", "Okay", "Sleepy", "Ready to learn"}}}
+	} else if err := checkSlides(slides, 0); err != nil {
+		return err
+	}
 	id, now := newID(), nowMs()
-	starter := Slide{ID: newID(), Type: SlidePoll, Question: "How are you feeling today?",
-		Options: []string{"Great", "Okay", "Sleepy", "Ready to learn"}}
-	starter.normalize()
-	data, _ := json.Marshal(starter)
 
 	tx, err := a.db.Begin()
 	if err != nil {
@@ -104,14 +117,44 @@ func (a *API) createDeck(c echo.Context) error {
 		id, key, title, now, now); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`INSERT INTO slides (id, deck_id, position, data) VALUES (?, ?, 0, ?)`,
-		starter.ID, id, string(data)); err != nil {
+	if err := insertSlides(tx, id, 0, slides); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	return c.JSON(http.StatusCreated, Deck{ID: id, Title: title, Slides: []Slide{starter}, SlideCount: 1, UpdatedAt: now})
+	return c.JSON(http.StatusCreated, Deck{ID: id, Title: title, Slides: slides, SlideCount: len(slides), UpdatedAt: now})
+}
+
+// checkSlides validates slides coming from API clients. offset is the number
+// of slides already in the deck, so error messages point at the right slide.
+func checkSlides(slides []Slide, offset int) error {
+	if offset+len(slides) > 100 {
+		return echo.NewHTTPError(http.StatusBadRequest, "A deck can hold up to 100 slides")
+	}
+	for i := range slides {
+		if err := slides[i].validate(offset + i); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+	}
+	return nil
+}
+
+// insertSlides normalizes slides in place and stores them from position start.
+func insertSlides(tx *sql.Tx, deckID string, start int, slides []Slide) error {
+	for i := range slides {
+		s := &slides[i]
+		if len(s.ID) < 8 {
+			s.ID = newID()
+		}
+		s.normalize()
+		data, _ := json.Marshal(s)
+		if _, err := tx.Exec(`INSERT INTO slides (id, deck_id, position, data) VALUES (?, ?, ?, ?)`,
+			s.ID, deckID, start+i, string(data)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (a *API) loadSlides(deckID string) ([]Slide, error) {
@@ -165,8 +208,16 @@ func (a *API) saveDeck(c echo.Context) error {
 	if title == "" {
 		title = "Untitled session"
 	}
-	if len(body.Slides) > 100 {
-		return echo.NewHTTPError(http.StatusBadRequest, "A deck can hold up to 100 slides")
+	// The web editor autosaves half finished slides, so it opts out of strict checks.
+	if c.QueryParam("draft") == "1" {
+		if len(body.Slides) > 100 {
+			return echo.NewHTTPError(http.StatusBadRequest, "A deck can hold up to 100 slides")
+		}
+	} else if err := checkSlides(body.Slides, 0); err != nil {
+		return err
+	}
+	if body.Slides == nil {
+		body.Slides = []Slide{}
 	}
 	now := nowMs()
 	tx, err := a.db.Begin()
@@ -180,22 +231,51 @@ func (a *API) saveDeck(c echo.Context) error {
 	if _, err := tx.Exec(`DELETE FROM slides WHERE deck_id = ?`, id); err != nil {
 		return err
 	}
-	for i := range body.Slides {
-		s := &body.Slides[i]
-		if len(s.ID) < 8 {
-			s.ID = newID()
-		}
-		s.normalize()
-		data, _ := json.Marshal(s)
-		if _, err := tx.Exec(`INSERT INTO slides (id, deck_id, position, data) VALUES (?, ?, ?, ?)`,
-			s.ID, id, i, string(data)); err != nil {
-			return err
-		}
+	if err := insertSlides(tx, id, 0, body.Slides); err != nil {
+		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	return c.JSON(http.StatusOK, Deck{ID: id, Title: title, Slides: body.Slides, SlideCount: len(body.Slides), UpdatedAt: now})
+}
+
+func (a *API) appendSlides(c echo.Context) error {
+	id, err := a.ownedDeck(c)
+	if err != nil {
+		return err
+	}
+	var body struct {
+		Slides []Slide `json:"slides"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return err
+	}
+	if len(body.Slides) == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Send at least one slide in the slides array")
+	}
+	tx, err := a.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var count int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM slides WHERE deck_id = ?`, id).Scan(&count); err != nil {
+		return err
+	}
+	if err := checkSlides(body.Slides, count); err != nil {
+		return err
+	}
+	if err := insertSlides(tx, id, count, body.Slides); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE decks SET updated_at = ? WHERE id = ?`, nowMs(), id); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return a.getDeck(c)
 }
 
 func (a *API) deleteDeck(c echo.Context) error {

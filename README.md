@@ -59,3 +59,13 @@ make build && ./bin/pulse -db pulse.db
 server/   Go API, websocket hub, SQLite schema, embedded dist/
 web/      Vite React app (pages/, components/, lib/, styles/)
 ```
+
+## API for AI agents
+
+Teachers can let their own AI build decks. The Sessions page has a "Use your AI" button with a ready prompt and the teacher key.
+
+- `/api/docs` is the Swagger UI.
+- `/api/openapi.json` is the OpenAPI 3.1 spec.
+- `/llms.txt` is a short plain text guide written for agents.
+
+Agents send the key as `X-Teacher-Key` or `Authorization: Bearer`. `POST /api/decks` takes a title and the full slides array, and bad slides return a 400 that names the slide to fix.

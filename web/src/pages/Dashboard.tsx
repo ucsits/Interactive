@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Layers, Loader2, Pencil, Play, Plus, Radio, Trash2 } from "lucide-react"
+import { Bot, Layers, Loader2, Pencil, Play, Plus, Radio, Trash2 } from "lucide-react"
+import { AgentDialog } from "@/components/AgentDialog"
 import { Logo } from "@/components/Logo"
 import { Button } from "@/components/ui/button"
 import {
@@ -23,9 +24,14 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [doomed, setDoomed] = useState<Deck | null>(null)
+  const [agentOpen, setAgentOpen] = useState(false)
 
+  // Refetch on focus so decks an AI agent made elsewhere appear without a reload.
   useEffect(() => {
-    api.listDecks().then(setDecks).catch((e) => setError(e.message))
+    const load = () => api.listDecks().then(setDecks).catch((e) => setError(e.message))
+    load()
+    window.addEventListener("focus", load)
+    return () => window.removeEventListener("focus", load)
   }, [])
 
   const create = async (template?: (typeof TEMPLATES)[number]) => {
@@ -66,10 +72,15 @@ export default function Dashboard() {
     <div className="page dashboard">
       <header className="topbar">
         <Logo />
-        <Button variant="tangerine" onClick={() => create()} disabled={!!busy}>
-          {busy === "blank" ? <Loader2 className="spin" /> : <Plus />}
-          New session
-        </Button>
+        <div className="topbar__right">
+          <Button variant="blurple" onClick={() => setAgentOpen(true)} aria-label="Use your AI">
+            <Bot /> <span className="hide-phone">Use your AI</span>
+          </Button>
+          <Button variant="tangerine" onClick={() => create()} disabled={!!busy} aria-label="New session">
+            {busy === "blank" ? <Loader2 className="spin" /> : <Plus />}
+            <span className="hide-phone">New session</span>
+          </Button>
+        </div>
       </header>
 
       <main className="container">
@@ -126,6 +137,8 @@ export default function Dashboard() {
           ))}
         </div>
       </main>
+
+      <AgentDialog open={agentOpen} onOpenChange={setAgentOpen} />
 
       <Dialog open={!!doomed} onOpenChange={(open) => !open && setDoomed(null)}>
         <DialogContent>

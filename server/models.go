@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 const (
 	SlidePoll      = "poll"
@@ -28,6 +31,33 @@ type Slide struct {
 	MinLabel   string   `json:"minLabel"`
 	MaxLabel   string   `json:"maxLabel"`
 	MaxEntries int      `json:"maxEntries"`
+}
+
+// validate rejects slides that normalize would otherwise silently rewrite,
+// so API clients such as AI agents learn what they got wrong.
+func (s *Slide) validate(i int) error {
+	at := fmt.Sprintf("Slide %d", i+1)
+	if !slideTypes[s.Type] {
+		return fmt.Errorf("%s has unknown type %q, use poll, quiz, wordcloud, open, scale or qa", at, s.Type)
+	}
+	if strings.TrimSpace(s.Question) == "" {
+		return fmt.Errorf("%s needs a question", at)
+	}
+	if len(s.Options) > 8 {
+		return fmt.Errorf("%s has %d options, the limit is 8", at, len(s.Options))
+	}
+	if (s.Type == SlidePoll || s.Type == SlideQuiz) && len(s.Options) < 2 {
+		return fmt.Errorf("%s is a %s and needs at least 2 options", at, s.Type)
+	}
+	for _, c := range s.Correct {
+		if c < 0 || c >= len(s.Options) {
+			return fmt.Errorf("%s has correct index %d but only %d options, indexes start at 0", at, c, len(s.Options))
+		}
+	}
+	if s.Type == SlideQuiz && len(s.Correct) == 0 {
+		return fmt.Errorf("%s is a quiz and needs at least one correct option index", at)
+	}
+	return nil
 }
 
 // normalize clamps user supplied slide settings into sane ranges.

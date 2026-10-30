@@ -41,6 +41,7 @@ func main() {
 
 	api := &API{db: db, hub: newHub(db)}
 	api.register(e.Group("/api"))
+	registerDocs(e)
 	e.GET("/healthz", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
 
 	dist, err := fs.Sub(distFS, "dist")
