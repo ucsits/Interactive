@@ -5,16 +5,16 @@
 
 :root {
   --ink: #0b0b10;
-  --paper: #f7f7f6;
+  --paper: #ffffff;
   --white: #ffffff;
-  --sun: #fcf08c;
-  --tangerine: #f9b483;
-  --lime: #a8dc98;
-  --blurple: #a5b4fc;
-  --pink: #fddcc4;
-  --sky: #dfe5ff;
-  --mint: #d5eecd;
-  --tomato: #f28b82;
+  --sun: #6acad6;
+  --blurple: #5ca6a8;
+  --lime: #b1c887;
+  --tangerine: #f4926f;
+  --sky: #b4e4eb;
+  --mint: #d8e3c3;
+  --pink: #f9c8b7;
+  --tomato: #ef6331;
   --radius: 0.875rem;
 
   --background: var(--paper);
@@ -27,7 +27,7 @@
   --primary-foreground: var(--white);
   --secondary: var(--white);
   --secondary-foreground: var(--ink);
-  --muted: #ebebe7;
+  --muted: #eef4f4;
   --muted-foreground: #45434f;
   --accent: var(--sun);
   --accent-foreground: var(--ink);
