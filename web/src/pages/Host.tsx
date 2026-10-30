@@ -69,7 +69,7 @@ export default function Host() {
 
   if (gone && state?.status !== "ended") {
     return (
-      <div className="page center-page bg-pink">
+      <div className="page center-page bg-tangerine">
         <div className="panel panel--narrow">
           <h1 className="panel__title">This session is not live</h1>
           <p className="panel__text">It may have ended, or it belongs to another browser.</p>

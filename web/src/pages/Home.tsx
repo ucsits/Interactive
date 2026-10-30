@@ -33,7 +33,7 @@ export default function Home() {
             Polls, quizzes, word clouds, scales and live Q&A. Students join from any phone in seconds, no account needed.
           </p>
           <div className="home__ctas">
-            <Button size="lg" variant="pink" onClick={() => navigate("/teach")}>
+            <Button size="lg" variant="tangerine" onClick={() => navigate("/teach")}>
               Host a session
               <ArrowRight />
             </Button>

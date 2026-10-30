@@ -2,7 +2,7 @@ import { Crown, Medal } from "lucide-react"
 import type { Player } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-const PODIUM = ["bg-sun", "bg-sky", "bg-pink"]
+const PODIUM = ["bg-sun", "bg-blurple", "bg-tangerine"]
 
 export function Leaderboard({ players, highlight, title = "Leaderboard" }: { players: Player[]; highlight?: string; title?: string }) {
   return (

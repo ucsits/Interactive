@@ -25,17 +25,17 @@ export interface SlideMeta {
 }
 
 export const SLIDE_META: Record<SlideType, SlideMeta> = {
-  poll: { label: "Poll", blurb: "Ask a quick multiple choice question", icon: BarChart3, color: "sky" },
+  poll: { label: "Poll", blurb: "Ask a quick multiple choice question", icon: BarChart3, color: "blurple" },
   quiz: { label: "Quiz", blurb: "Race the clock for points", icon: Trophy, color: "sun" },
   wordcloud: { label: "Word cloud", blurb: "Collect short words and watch them grow", icon: Cloud, color: "pink" },
   open: { label: "Open ended", blurb: "Gather longer thoughts and ideas", icon: MessageSquareText, color: "lime" },
   scale: { label: "Scale", blurb: "Rate confidence or opinions on a scale", icon: Gauge, color: "tangerine" },
-  qa: { label: "Q&A", blurb: "Students ask and upvote questions", icon: MessageCircleQuestion, color: "blurple" },
+  qa: { label: "Q&A", blurb: "Students ask and upvote questions", icon: MessageCircleQuestion, color: "sky" },
 }
 
 export const SLIDE_ORDER: SlideType[] = ["poll", "quiz", "wordcloud", "open", "scale", "qa"]
 
-export const OPTION_COLORS = ["pink", "sky", "sun", "lime", "tangerine", "blurple", "mint", "tomato"]
+export const OPTION_COLORS = ["tangerine", "blurple", "sun", "lime", "pink", "sky", "mint", "tomato"]
 export const OPTION_SHAPES: LucideIcon[] = [Triangle, Diamond, Circle, Square, Star, Hexagon, Heart, Pentagon]
 
 function tempId() {

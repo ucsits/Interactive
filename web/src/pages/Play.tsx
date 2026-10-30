@@ -32,7 +32,7 @@ export default function Play() {
 
   if (gone && state?.status !== "ended") {
     return (
-      <div className="page center-page bg-pink">
+      <div className="page center-page bg-tangerine">
         <div className="panel panel--narrow">
           <WifiOff className="panel__icon" strokeWidth={3} />
           <h1 className="panel__title">This session is over</h1>
@@ -47,7 +47,7 @@ export default function Play() {
 
   if (!state) {
     return (
-      <div className="page center-page bg-sky">
+      <div className="page center-page bg-blurple">
         <Loader2 className="spin big-spin" strokeWidth={3} />
       </div>
     )

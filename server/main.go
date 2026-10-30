@@ -55,7 +55,7 @@ func main() {
 		},
 	}))
 
-	log.Printf("Pulse listening on %s", *addr)
+	log.Printf("UCS Interactive listening on %s", *addr)
 	if err := e.Start(*addr); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}

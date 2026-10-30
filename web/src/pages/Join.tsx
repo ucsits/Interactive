@@ -41,7 +41,7 @@ export default function Join() {
   }
 
   return (
-    <div className="page center-page bg-sky">
+    <div className="page center-page bg-blurple">
       <Logo />
       {missing ? (
         <div className="panel panel--narrow">

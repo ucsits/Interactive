@@ -15,7 +15,7 @@ import { api, formatCode } from "@/lib/api"
 import { TEMPLATES, templateSlides } from "@/lib/slides"
 import type { Deck } from "@/lib/types"
 
-const CARD_COLORS = ["bg-sun", "bg-pink", "bg-sky", "bg-lime", "bg-tangerine", "bg-mint"]
+const CARD_COLORS = ["bg-sun", "bg-blurple", "bg-tangerine", "bg-lime", "bg-sky", "bg-pink"]
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -66,7 +66,7 @@ export default function Dashboard() {
     <div className="page dashboard">
       <header className="topbar">
         <Logo />
-        <Button variant="pink" onClick={() => create()} disabled={!!busy}>
+        <Button variant="tangerine" onClick={() => create()} disabled={!!busy}>
           {busy === "blank" ? <Loader2 className="spin" /> : <Plus />}
           New session
         </Button>

@@ -1,4 +1,4 @@
-# Pulse
+# UCS Interactive
 
 Live polls, quizzes, word clouds, scales and Q&A for classrooms. Teachers build a session, hit Present, and students join from any phone with a six digit code. No student accounts.
 
