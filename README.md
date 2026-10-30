@@ -25,7 +25,7 @@ Live polls, quizzes, word clouds, scales and Q&A for classrooms. Teachers build 
 docker compose up --build -d
 ```
 
-Open http://localhost:8080. Data lives in the `pulse-data` volume. Set `PULSE_PORT` to change the host port.
+Open http://localhost:8080. Data lives in the `pulse-data` volume. Set `PULSE_PORT` to change the host port. It binds to 127.0.0.1 so a reverse proxy sits in front, set `PULSE_BIND=0.0.0.0` to expose it directly.
 
 ## Develop
 
